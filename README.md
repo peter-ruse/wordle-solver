@@ -9,6 +9,6 @@ To run it:
 - ```pip install pipenv``` (if you don't already have it)
 - ```cd``` into the project directory
 - Run ```pipenv install``` to install the dependencies
-- Run ```pipenv shell``` to source the virtual environment
+- Run ```pipenv shell``` to activate the virtual environment
 - Run ```python wordle_solve.py```
 - Voila!
