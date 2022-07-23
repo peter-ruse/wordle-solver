@@ -10,5 +10,5 @@ To run it:
 - ```cd``` into the project directory
 - Run ```pipenv install``` to install the dependencies
 - Run ```pipenv shell``` to activate the virtual environment
-- Run ```python wordle_solve.py```
+- Run ```python wordle_solver.py```
 - Voila!
