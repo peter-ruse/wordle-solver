@@ -86,12 +86,12 @@ class Wordle:
                     self.exact_count[letter] = True
                     all_correct = False
 
+            if all_correct:
+                break
+
             for letter in letter_count:
                 if letter_count[letter] > self.letter_count.get(letter, 0):
                     self.letter_count[letter] = letter_count[letter]
-
-            if all_correct:
-                break
 
             attempt += 1
 
