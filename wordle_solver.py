@@ -1,7 +1,5 @@
 from collections import Counter
 import random
-import requests
-import ast
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
