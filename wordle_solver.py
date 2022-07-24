@@ -1,7 +1,10 @@
+import os
 from collections import Counter
 import random
 import time
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 
 
@@ -14,12 +17,12 @@ class Wordle:
     exact_count = dict()
     right_letter = [None] * 5
     letters_not_here = [set() for _ in range(5)]
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     driver.implicitly_wait(10)
     driver.get(wordle_url)
 
     def populate_guess_words(self):
-        with open('words.txt', 'r') as f:
+        with open(f'{os.path.dirname(os.path.abspath(__file__))}/words.txt', 'r') as f:
             self.guess_words = f.read().splitlines()
 
     def start_game(self):
