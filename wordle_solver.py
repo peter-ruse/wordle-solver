@@ -61,7 +61,7 @@ class Wordle:
 
         guess_word = random.choice(self.guess_words)
 
-        print(f'[ATTEMPT {self.attempt}] number of guess words to choose from:'
+        print(f'[ATTEMPT {self.attempt}] number of guess words to choose from: '
             f'{len(self.guess_words)}; choosing "{guess_word}"')
 
         return guess_word
