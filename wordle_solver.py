@@ -15,11 +15,12 @@ class Wordle:
     game_cell_xpath = "(//*[local-name()='div' and @class='Row-module_row__dEHfN'])[{attempt}]/div[{pos}]/div"
     letter_count = dict()
     exact_count = dict()
-    right_letter = [None] * 5
+    correct_letter = [None] * 5
     letters_not_here = [set() for _ in range(5)]
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     driver.implicitly_wait(10)
     driver.get(wordle_url)
+    attempt = 1
 
     def populate_guess_words(self):
         with open(f'{os.path.dirname(os.path.abspath(__file__))}/words.txt', 'r') as f:
@@ -38,14 +39,19 @@ class Wordle:
     def delay(self, seconds):
         time.sleep(seconds)
 
-    def make_guess(self, attempt):
+    def make_guess(self):
         guess_words = []
         for guess_word in self.guess_words:
             letter_count = Counter(guess_word)
-            condition_1 = all(letter_count.get(letter, 0) >= self.letter_count[letter] for letter in self.letter_count)
-            condition_2 = all(letter_count.get(letter, 0) == self.letter_count.get(letter, 0) for letter in self.exact_count)
-            condition_3 = all(letter not in letters_not_here for letter, letters_not_here in zip(guess_word, self.letters_not_here))
-            condition_4 = all(letter == right_letter for letter, right_letter in zip(guess_word, self.right_letter) if right_letter)     
+            condition_1 = all(letter_count.get(letter, 0) >= self.letter_count[letter] 
+                for letter in self.letter_count)
+            condition_2 = all(letter_count.get(letter, 0) == self.letter_count.get(letter, 0) 
+                for letter in self.exact_count)
+            condition_3 = all(letter not in letters_not_here for letter, letters_not_here 
+                in zip(guess_word, self.letters_not_here))
+            condition_4 = all(letter == correct_letter for letter, correct_letter 
+                in zip(guess_word, self.correct_letter) if correct_letter)
+    
             if condition_1 and condition_2 and condition_3 and condition_4:
                 guess_words.append(guess_word)
         
@@ -54,14 +60,14 @@ class Wordle:
 
         guess_word = random.choice(self.guess_words)
 
-        print(f'[ATTEMPT {attempt}] number of guess words to choose from: {len(self.guess_words)}; choosing "{guess_word}"')
+        print(f'[ATTEMPT {self.attempt}] number of guess words to choose from:'
+            f'{len(self.guess_words)}; choosing "{guess_word}"')
 
         return guess_word
 
     def enter_guesses(self):
-        attempt = 1
-        while attempt <= 6:
-            guess_word = self.make_guess(attempt)
+        while self.attempt <= 6:
+            guess_word = self.make_guess()
 
             # so that the word is typed out at a natural pace, 
             # put a delay of 0.2 sec between keystrokes...
@@ -78,9 +84,9 @@ class Wordle:
             all_correct = True
             letter_count = Counter(guess_word)
             for pos, letter in enumerate(guess_word):
-                data_state = self.get_data_state(attempt, pos + 1)
+                data_state = self.get_data_state(self.attempt, pos + 1)
                 if data_state == 'correct':
-                    self.right_letter[pos] = letter
+                    self.correct_letter[pos] = letter
                 elif data_state == 'present':
                     self.letters_not_here[pos].add(letter)
                     all_correct = False
@@ -96,7 +102,7 @@ class Wordle:
                 if letter_count[letter] > self.letter_count.get(letter, 0):
                     self.letter_count[letter] = letter_count[letter]
 
-            attempt += 1
+            self.attempt += 1
 
     def play_game(self):
         self.populate_guess_words()
