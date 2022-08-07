@@ -36,7 +36,8 @@ class Wordle:
     def press_key(self, char):
         self.driver.find_element(By.XPATH, self.keyboard_button_xpath.format(char=char)).click()
 
-    def delay(self, seconds):
+    @staticmethod
+    def delay(seconds):
         time.sleep(seconds)
 
     def make_guess(self):
