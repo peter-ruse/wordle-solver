@@ -20,7 +20,7 @@ class Wordle:
     correct_letter = [None] * 5
     letters_not_here = [set() for _ in range(5)]
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(3)
     driver.get(wordle_url)
     attempt = 1
 
@@ -28,10 +28,28 @@ class Wordle:
         with open(f"{os.path.dirname(os.path.abspath(__file__))}/words.txt", "r") as f:
             self.guess_words = f.read().splitlines()
 
+    def click_continue_button(self):
+        try:
+            self.driver.find_element(By.XPATH, self.continue_button_xpath).click()
+        except:
+            pass
+    
+    def click_play_button(self):
+        try:
+            self.driver.find_element(By.XPATH, self.play_button_xpath).click()
+        except:
+            pass
+    
+    def click_close_intro_button(self):
+        try:
+            self.driver.find_element(By.XPATH, self.close_icon_xpath).click()
+        except:
+            pass
+
     def start_game(self):
-        self.driver.find_element(By.XPATH, self.continue_button_xpath).click()
-        self.driver.find_element(By.XPATH, self.play_button_xpath).click()
-        self.driver.find_element(By.XPATH, self.close_icon_xpath).click()
+        self.click_continue_button()
+        self.click_play_button()
+        self.click_close_intro_button()
 
     def get_data_state(self, pos):
         return self.driver.find_element(
@@ -39,10 +57,6 @@ class Wordle:
 
     def press_key(self, char):
         self.driver.find_element(By.XPATH, self.keyboard_button_xpath.format(char=char)).click()
-
-    @staticmethod
-    def delay(seconds):
-        time.sleep(seconds)
 
     def make_guess(self):
         guess_words = []
@@ -78,13 +92,13 @@ class Wordle:
             # put a delay of 0.2 sec between keystrokes...
             for letter in guess_word:
                 self.press_key(letter)
-                self.delay(0.2)
+                time.sleep(0.2)
 
             # press the enter button to submit the word...
             self.press_key("↵")
 
             # sleep 2 seconds while the hints are populated...
-            self.delay(2)
+            time.sleep(2)
 
             all_correct = True
             letter_count = Counter(guess_word)
@@ -113,7 +127,7 @@ class Wordle:
         self.populate_guess_words()
         self.start_game()
         self.enter_guesses()
-        self.delay(3)
+        time.sleep(3)
         self.driver.close()
 
 
