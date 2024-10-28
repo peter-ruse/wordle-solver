@@ -27,7 +27,6 @@ class Wordle:
     correct_letter = [None] * 5
     letters_not_here = [set() for _ in range(5)]
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    driver.implicitly_wait(3)
     driver.get(wordle_url)
     attempt = 1
     hints = []
