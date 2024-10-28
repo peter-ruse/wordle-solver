@@ -23,7 +23,7 @@ class Wordle:
     keyboard_button_xpath = "//*[local-name()='button' and @data-key='{char}']"
     game_cell_xpath = "//*[@aria-label='Row {attempt}']/div[{pos}]/div"
     letter_count = dict()
-    letters_with_known_count = set()
+    min_letter_count = dict()
     correct_letter = [None] * 5
     letters_not_here = [set() for _ in range(5)]
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
@@ -81,6 +81,19 @@ class Wordle:
             click_successful
         )
 
+    def enter_guess(self):
+        self.guess_word = random.choice(self.guess_words)
+
+        print(
+            f"[ATTEMPT {self.attempt}] number of guess words to choose from: "
+            f"{len(self.guess_words)}; choosing '{self.guess_word}'"
+        )
+
+        for pos, letter in enumerate(self.guess_word, start=1):
+            self.press_key(letter, pos)
+
+        self.press_key(self.enter_char)
+
     def get_hints(self):
         def _get_hints(driver: WebDriver):
             self.hints = [
@@ -99,84 +112,65 @@ class Wordle:
             all_useful_hints
         )
 
-    def make_guess(self):
-        guess_words = []
-        for guess_word in self.guess_words:
-            letter_count = Counter(guess_word)
+    def use_hints(self):
+        letter_count = Counter(self.guess_word)
+        for pos, letter, hint in zip(range(5), self.guess_word, self.hints):
+            match hint:
+                case "correct":
+                    self.correct_letter[pos] = letter
+                case "present":
+                    self.letters_not_here[pos].add(letter)
+                case "absent":
+                    letter_count[letter] -= 1
+                    self.letter_count[letter] = letter_count[letter]
+                    self.letters_not_here[pos].add(letter)
+                case _:
+                    raise ValueError(f"unexpected hint {hint}")
+
+        for letter, count in letter_count.items():
+            if count > self.min_letter_count.get(letter, 0):
+                self.min_letter_count[letter] = count
+
+    def guessed_word(self):
+        return all(letter is not None for letter in self.correct_letter)
+
+    def update_guess_words(self):
+        def still_valid(word):
+            letter_count = Counter(word)
             condition_1 = all(
-                letter_count.get(letter, 0) >= self.letter_count[letter]
-                for letter in self.letter_count
+                letter_count.get(letter, 0) >= min_letter_count
+                for letter, min_letter_count in self.min_letter_count.items()
             )
             condition_2 = all(
-                letter_count.get(letter, 0) == self.letter_count.get(letter, 0)
-                for letter in self.letters_with_known_count
+                letter_count.get(letter, 0) == count
+                for letter, count in self.letter_count.items()
             )
             condition_3 = all(
                 letter not in letters_not_here
-                for letter, letters_not_here in zip(guess_word, self.letters_not_here)
+                for letter, letters_not_here in zip(word, self.letters_not_here)
             )
             condition_4 = all(
                 letter == correct_letter
-                for letter, correct_letter in zip(guess_word, self.correct_letter)
-                if correct_letter
+                for letter, correct_letter in zip(word, self.correct_letter)
+                if correct_letter is not None
             )
 
-            if condition_1 and condition_2 and condition_3 and condition_4:
-                guess_words.append(guess_word)
+            return condition_1 and condition_2 and condition_3 and condition_4
 
-        self.guess_words = guess_words
-
-        guess_word = random.choice(self.guess_words)
-
-        print(
-            f"[ATTEMPT {self.attempt}] number of guess words to choose from: "
-            f"{len(self.guess_words)}; choosing '{guess_word}'"
-        )
-
-        return guess_word
+        self.guess_words = [word for word in self.guess_words if still_valid(word)]
 
     def enter_guesses(self):
-        while self.attempt <= 6:
-            guess_word = self.make_guess()
-
-            for pos, letter in enumerate(guess_word, start=1):
-                self.press_key(letter, pos)
-
-            self.press_key(self.enter_char)
-
+        while self.attempt <= 6 and not self.guessed_word():
+            self.enter_guess()
             self.get_hints()
-
-            all_correct = True
-            letter_count = Counter(guess_word)
-            for pos, letter, hint in zip(range(5), guess_word, self.hints):
-                match hint:
-                    case "correct":
-                        self.correct_letter[pos] = letter
-                    case "present":
-                        self.letters_not_here[pos].add(letter)
-                        all_correct = False
-                    case "absent":
-                        letter_count[letter] -= 1
-                        self.letters_with_known_count.add(letter)
-                        all_correct = False
-                    case _:
-                        raise ValueError(f"unexpected hint {hint}")
-
-            if all_correct:
-                print("guessed the word! exiting game...")
-                break
-
-            for letter in letter_count:
-                if letter_count[letter] > self.letter_count.get(letter, 0):
-                    self.letter_count[letter] = letter_count[letter]
-
+            self.use_hints()
+            self.update_guess_words()
             self.attempt += 1
 
     def play_game(self):
         self.populate_guess_words()
         self.start_game()
         self.enter_guesses()
-        self.driver.close()
 
 
 if __name__ == "__main__":
