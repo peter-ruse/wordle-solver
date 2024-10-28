@@ -1,8 +1,6 @@
 import random
-import time
 from collections import Counter
 from pathlib import Path
-from select import poll
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -114,6 +112,7 @@ class Wordle:
 
     def use_hints(self):
         letter_count = Counter(self.guess_word)
+
         for pos, letter, hint in zip(range(5), self.guess_word, self.hints):
             match hint:
                 case "correct":
@@ -137,25 +136,25 @@ class Wordle:
     def update_guess_words(self):
         def still_valid(word):
             letter_count = Counter(word)
-            condition_1 = all(
-                letter_count.get(letter, 0) >= min_letter_count
-                for letter, min_letter_count in self.min_letter_count.items()
+            return (
+                all(
+                    letter_count.get(letter, 0) >= min_letter_count
+                    for letter, min_letter_count in self.min_letter_count.items()
+                )
+                and all(
+                    letter_count.get(letter, 0) == count
+                    for letter, count in self.letter_count.items()
+                )
+                and all(
+                    letter not in letters_not_here
+                    for letter, letters_not_here in zip(word, self.letters_not_here)
+                )
+                and all(
+                    letter == correct_letter
+                    for letter, correct_letter in zip(word, self.correct_letter)
+                    if correct_letter is not None
+                )
             )
-            condition_2 = all(
-                letter_count.get(letter, 0) == count
-                for letter, count in self.letter_count.items()
-            )
-            condition_3 = all(
-                letter not in letters_not_here
-                for letter, letters_not_here in zip(word, self.letters_not_here)
-            )
-            condition_4 = all(
-                letter == correct_letter
-                for letter, correct_letter in zip(word, self.correct_letter)
-                if correct_letter is not None
-            )
-
-            return condition_1 and condition_2 and condition_3 and condition_4
 
         self.guess_words = [word for word in self.guess_words if still_valid(word)]
 
