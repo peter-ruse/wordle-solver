@@ -2,6 +2,7 @@ import random
 import time
 from collections import Counter
 from pathlib import Path
+from select import poll
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -29,46 +30,75 @@ class Wordle:
     driver.implicitly_wait(3)
     driver.get(wordle_url)
     attempt = 1
+    hints = []
+    enter_char = "↵"
 
     def populate_guess_words(self):
         with open(Path(__file__).parents[0] / "data" / "words.txt", "r") as f:
             self.guess_words = f.read().splitlines()
 
     def click_play_button(self):
-        WebDriverWait(self.driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, self.play_button_xpath))
+        WebDriverWait(self.driver, 20, poll_frequency=0.1).until(
+            EC.element_to_be_clickable((By.XPATH, self.play_button_xpath))
         ).click()
 
     def click_close_intro_button(self):
-        WebDriverWait(self.driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, self.close_icon_xpath))
+        WebDriverWait(self.driver, 20, poll_frequency=0.1).until(
+            EC.element_to_be_clickable((By.XPATH, self.close_icon_xpath))
         ).click()
 
     def start_game(self):
         self.click_play_button()
         self.click_close_intro_button()
 
+    def press_key(self, char: str, pos: int | None = None):
+        def click_successful(driver: WebDriver) -> bool:
+            WebDriverWait(self.driver, 20, poll_frequency=0.1).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, self.keyboard_button_xpath.format(char=char))
+                )
+            ).click()
+
+            if pos is not None:
+                return (
+                    WebDriverWait(driver, 20, poll_frequency=0.1)
+                    .until(
+                        EC.visibility_of_element_located(
+                            (
+                                By.XPATH,
+                                self.game_cell_xpath.format(
+                                    attempt=self.attempt, pos=pos
+                                ),
+                            )
+                        )
+                    )
+                    .text
+                    == char.upper()
+                )
+            else:
+                return True
+
+        WebDriverWait(driver=self.driver, timeout=20, poll_frequency=0.1).until(
+            click_successful
+        )
+
     def get_hints(self):
         def _get_hints(driver: WebDriver):
-            return [
+            self.hints = [
                 driver.find_element(
-                    By.XPATH, self.game_cell_xpath.format(attempt=self.attempt, pos=pos)
+                    By.XPATH,
+                    self.game_cell_xpath.format(attempt=self.attempt, pos=pos),
                 ).get_attribute("data-state")
                 for pos in range(1, 6)
             ]
 
         def all_useful_hints(driver) -> bool:
-            hints = _get_hints(driver)
-            return all(hint in {"correct", "present", "absent"} for hint in hints)
+            _get_hints(driver)
+            return all(hint in {"correct", "present", "absent"} for hint in self.hints)
 
-        WebDriverWait(driver=self.driver, timeout=20).until(all_useful_hints)
-
-        return _get_hints(self.driver)
-
-    def press_key(self, char: str):
-        self.driver.find_element(
-            By.XPATH, self.keyboard_button_xpath.format(char=char)
-        ).click()
+        WebDriverWait(driver=self.driver, timeout=20, poll_frequency=0.1).until(
+            all_useful_hints
+        )
 
     def make_guess(self):
         guess_words = []
@@ -110,16 +140,16 @@ class Wordle:
         while self.attempt <= 6:
             guess_word = self.make_guess()
 
-            for letter in guess_word:
-                self.press_key(letter)
+            for pos, letter in enumerate(guess_word, start=1):
+                self.press_key(letter, pos)
 
-            self.press_key("↵")
+            self.press_key(self.enter_char)
 
-            hints = self.get_hints()
+            self.get_hints()
 
             all_correct = True
             letter_count = Counter(guess_word)
-            for pos, letter, hint in zip(range(6), guess_word, hints):
+            for pos, letter, hint in zip(range(5), guess_word, self.hints):
                 match hint:
                     case "correct":
                         self.correct_letter[pos] = letter
@@ -147,7 +177,6 @@ class Wordle:
         self.populate_guess_words()
         self.start_game()
         self.enter_guesses()
-        time.sleep(3)
         self.driver.close()
 
 
